@@ -20,7 +20,13 @@ import (
 
 func init() {
 	mage.BeatDescription = "Filebeat sends log files to Logstash or directly to Elasticsearch."
-	mage.BeatLicense = "Elastic"
+	mage.BeatLicense = "Elastic License"
+}
+
+// Aliases provides compatibility with CI while we transition all Beats
+// to having common testing targets.
+var Aliases = map[string]interface{}{
+	"goTestUnit": GoUnitTest, // dev-tools/jenkins_ci.ps1 uses this.
 }
 
 // Build builds the Beat binary.
@@ -46,12 +52,16 @@ func Clean() error {
 
 // Fields generates a fields.yml and fields.go for each module.
 func Fields() {
-	mg.Deps(fieldsYML, mage.GenerateModuleFieldsGo)
+	mg.Deps(fieldsYML, moduleFieldsGo)
+}
+
+func moduleFieldsGo() error {
+	return mage.GenerateModuleFieldsGo("module")
 }
 
 // fieldsYML generates a fields.yml based on filebeat + x-pack/filebeat/modules.
 func fieldsYML() error {
-	return mage.GenerateFieldsYAML(mage.OSSBeatDir("module"), "module")
+	return mage.GenerateFieldsYAML(mage.OSSBeatDir("module"), "module", "input")
 }
 
 // Dashboards collects all the dashboards and generates index patterns.
@@ -205,6 +215,8 @@ func referenceConfig() error {
 	var configParts = []string{
 		mage.OSSBeatDir("_meta/common.reference.p1.yml"),
 		modulesConfigYml,
+		mage.OSSBeatDir("_meta/common.reference.inputs.yml"),
+		"_meta/common.reference.inputs.yml",
 		mage.OSSBeatDir("_meta/common.reference.p2.yml"),
 		"{{ elastic_beats_dir }}/libbeat/_meta/config.reference.yml",
 	}
